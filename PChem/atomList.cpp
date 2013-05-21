@@ -554,16 +554,21 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 		std::vector<ResidueData> TempLoop;
 		int num_res_interface = 0;
 		int num_res_total = 0;
-		
+		int current_loop_length = 0;
+		int first_res_num = ComplexResidues[chain_ID][i].aCarbon.residue_num;
+
+		// prev_res_num and current_res_num are counting controls to make sure gaps in the protein chain are accounted for
 		// start counting loops starting at that residue 
 		// and ending at the maximum allowed loop size (or the end of the chain)
-		for (int j = i; (j < i + max_res) && (j < chain_size); j++)
+		for (int j = i; (current_loop_length < max_res) && (j < chain_size); j++)
 		{
 			double distance;
 			double percent_interface;
 			
 			ResidueData current_res = ComplexResidues[chain_ID][j];
-			
+			int current_res_num = current_res.aCarbon.residue_num;
+			current_loop_length = current_res_num - first_res_num + 1;
+
 			TempLoop.push_back(current_res);
 			num_res_total++;
 
