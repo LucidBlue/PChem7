@@ -75,7 +75,7 @@ public:
 	void InsertAtomData(AtomData atom);
 	double AtomDistCalc(AtomData& atom1, AtomData& atom2);
 	void TestCalc();
-	void AllAtomsDistCalc(double bind_distance);
+	void AllAtomsDistCalc(double bind_distance, bool aCarbons);
 //	void PrintAtomDist(bfs::path filename, double bind_distance);
 	void ExtractResidues();
 	void PrintResidues(bfs::path filename);

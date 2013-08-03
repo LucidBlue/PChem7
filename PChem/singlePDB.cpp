@@ -40,7 +40,7 @@ void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 
 	testComplex.RemoveDuplicates();
 	
-	testComplex.AllAtomsDistCalc(params.bind_dist);		 
+	testComplex.AllAtomsDistCalc(params.bind_dist, params.aCarbons_only);		 
 	//testComplex.PrintAtomDist(file_dist, params.bind_dist);
 	
 	testComplex.ExtractResidues();

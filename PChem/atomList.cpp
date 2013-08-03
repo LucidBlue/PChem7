@@ -512,37 +512,47 @@ void ProteinComplex::TestCalc()
 	std::cout<< AtomDistCalc(ComplexAtomData[0][14], ComplexAtomData[0][18]) << std::endl;
 }
 
-void ProteinComplex::AllAtomsDistCalc(double bind_distance)
+void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 {
-	for (int i = 0; i < ComplexAtomData.size(); i++)
+	for (std::vector<std::vector<AtomData> >::iterator ch1 = ComplexAtomData.begin(); ch1 < ComplexAtomData.end(); ch1++)
 	{
-		for (int j = 0; j < ComplexAtomData[i].size(); j++)
+		for (std::vector<AtomData>::iterator at1 = ch1->begin(); at1 < ch1->end(); at1++)
 		{
-			for (int a = i + 1; a < ComplexAtomData.size(); a++)
+			for (std::vector<std::vector<AtomData> >::iterator ch2 = ch1 + 1; ch2 < ComplexAtomData.end(); ch2++)
 			{
-				for (int b = 0; b < ComplexAtomData[a].size(); b++)
+				for (std::vector<AtomData>::iterator at2 = ch2->begin(); at2 < ch2->end(); at2++)
 				{	
-					AtomData atom1 = ComplexAtomData[i][j];
-					AtomData atom2 = ComplexAtomData[a][b];
-					if (AtomDistCalc(atom1, atom2) < bind_distance)
+					//AtomData atom1 = *at1;
+					//AtomData atom2 = *at2;
+					if (AtomDistCalc(*at1, *at2) < bind_distance)
 					{
 						
-						char chain1 = atom1.chain_id;
-						char chain2 = atom2.chain_id;
+						char chain1 = at1->chain_id;
+						char chain2 = at2->chain_id;
 						std::stringstream ss;
 						std::string chain_pair;
 						ss << chain1 << chain2;
 						ss >> chain_pair;
 						ss.clear();
 
-						if (FindChainPair(atom1.interfaces, chain1, chain2) == false)
-							atom1.interfaces.push_back(chain_pair);
+						if (aCarbons)
+						{
+							if (!FindChainPair(at1->interfaces, chain1, chain2) && at1->atom_type == "CA")
+									at1->interfaces.push_back(chain_pair);
 
-						if (FindChainPair(atom2.interfaces, chain1, chain2) == false)
-							atom2.interfaces.push_back(chain_pair);
+							if (!FindChainPair(at2->interfaces, chain1, chain2) && at2->atom_type == "CA")
+								at2->interfaces.push_back(chain_pair);
+						}
+						else{
+							if (!FindChainPair(at1->interfaces, chain1, chain2))
+									at1->interfaces.push_back(chain_pair);
 
-						ComplexAtomData[i][j] = atom1;
-						ComplexAtomData[a][b] = atom2;
+							if (!FindChainPair(at2->interfaces, chain1, chain2))
+								at2->interfaces.push_back(chain_pair);
+						}
+
+						//ComplexAtomData[i][j] = atom1;
+						//ComplexAtomData[a][b] = atom2;
 						
 						/*
 						for (int y = 0; y < atom1.interfaces.size(); y++)
@@ -553,8 +563,8 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance)
 						std::cout << std::endl;
 						*/
 
-						ComplexAtomData[i][j].interface_atom = true;
-						ComplexAtomData[a][b].interface_atom = true;
+						at1->interface_atom = true;
+						at2->interface_atom = true;
 					}
 				}
 			}

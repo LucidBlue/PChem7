@@ -18,6 +18,7 @@ int main(int argc, char* const argv[])
 	params.min_perc = 80;
 	params.max_dist = 9.6;
 	params.len_factor = 1.75;
+	params.aCarbons_only = false;
 
 	bfs::path input;
 
@@ -37,6 +38,8 @@ int main(int argc, char* const argv[])
 			params.max_dist = atof(argv[++i]);
 		else if (string(argv[i]) == "-lfactor")
 			params.len_factor = atof(argv[++i]);
+		else if (string(argv[i]) == "-acarbs")
+			params.aCarbons_only = true;
 	}
 
 	if (bfs::exists(input))

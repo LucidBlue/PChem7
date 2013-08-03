@@ -13,6 +13,7 @@ struct ParamData
 	double min_perc;
 	double max_dist;
 	double len_factor;
+	bool aCarbons_only;
 };
 void SinglePDB (bfs::path input, bfs::path, ParamData input_params);
 
