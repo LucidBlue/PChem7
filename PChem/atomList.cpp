@@ -17,6 +17,7 @@
 #include <locale>
 
 // may need to change the defaults if this runs into errors
+
 AtomData::AtomData()
 {
 	atom_num = 0;
@@ -165,7 +166,6 @@ void ProteinComplex::FindDuplicates2(bfs::path filename)
 				
 					ChainDuplicates.push_back(TempDuplicates);
 				}
-			
 			}
 		}
 	}
@@ -330,11 +330,14 @@ void ProteinComplex::CleanPDB2(bfs::path input, bfs::path output)
 	infile.close();
 }*/
 
-bool ProteinComplex::FindChainPair(std::vector<std::string>& pair_list, char chain1, char chain2)
+bool ProteinComplex::FindChainPair(std::vector<std::string>& pair_list, std::string chain_pair)
 {
 	std::string pair_order_1, pair_order_2;
 	std::stringstream ss;
 	bool found_pair = false;
+
+	char chain1 = chain_pair[0];
+	char chain2 = chain_pair[1];
 
 	ss << chain1 << chain2;
 	ss >> pair_order_1;
@@ -537,17 +540,17 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 
 						if (aCarbons)
 						{
-							if (!FindChainPair(at1->interfaces, chain1, chain2) && at1->atom_type == "CA")
+							if (!FindChainPair(at1->interfaces, chain_pair) && at1->atom_type == "CA")
 									at1->interfaces.push_back(chain_pair);
 
-							if (!FindChainPair(at2->interfaces, chain1, chain2) && at2->atom_type == "CA")
+							if (!FindChainPair(at2->interfaces, chain_pair) && at2->atom_type == "CA")
 								at2->interfaces.push_back(chain_pair);
 						}
 						else{
-							if (!FindChainPair(at1->interfaces, chain1, chain2))
+							if (!FindChainPair(at1->interfaces, chain_pair))
 									at1->interfaces.push_back(chain_pair);
 
-							if (!FindChainPair(at2->interfaces, chain1, chain2))
+							if (!FindChainPair(at2->interfaces, chain_pair))
 								at2->interfaces.push_back(chain_pair);
 						}
 
@@ -562,7 +565,6 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 							std::cout << atom2.atom_num << " " << atom2.interfaces.size() << " " << atom2.interfaces[y] << " "; 
 						std::cout << std::endl;
 						*/
-						//
 
 						at1->interface_atom = true;
 						at2->interface_atom = true;
@@ -623,10 +625,8 @@ void ProteinComplex::ExtractResidues()
 			for (int a = 0; a < current_res.interfaces.size(); a++)
 			{
 				std::string current_pair = current_res.interfaces[a];
-				char chain1 = current_pair[0];
-				char chain2 = current_pair[1];
 
-				if (FindChainPair(res_chain_pairs, chain1, chain2) == false)
+				if (FindChainPair(res_chain_pairs, current_pair) == false)
 						res_chain_pairs.push_back(current_pair);
 			}
 
@@ -702,9 +702,15 @@ void ProteinComplex::PrintResidues(bfs::path filename)
 	}
 }
 
-void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int max_res, double min_perc, double len_factor)
+void ProteinComplex::LoopFinder(int chain_index, ParamData params)
 {
-	int chain_size = ComplexResidues[chain_ID].size();
+	double max_dist = params.max_dist;
+	int min_res = params.min_res;
+	int max_res = params.max_res;
+	double min_perc = params.min_perc;
+	double len_factor = params.len_factor;
+
+	int chain_size = ComplexResidues[chain_index].size();
 	
 	// visit each residue in the chain
 	for (int i = 0; i < chain_size; i++)
@@ -714,7 +720,7 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 		int num_res_interface = 0;
 		int num_res_total = 0;
 		int current_loop_length = 0;
-		int first_res_num = ComplexResidues[chain_ID][i].aCarbon.residue_num;
+		int first_res_num = ComplexResidues[chain_index][i].aCarbon.residue_num;
 
 		// prev_res_num and current_res_num are counting controls to make sure gaps in the protein chain are accounted for
 		// start counting loops starting at that residue 
@@ -724,7 +730,7 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 			double distance;
 			double percent_interface;
 			
-			ResidueData current_res = ComplexResidues[chain_ID][j];
+			ResidueData current_res = ComplexResidues[chain_index][j];
 			int current_res_num = current_res.aCarbon.residue_num;
 			current_loop_length = current_res_num - first_res_num + 1;
 
@@ -735,7 +741,7 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 			// linker length shouldn't be more than about half of the loop length
 			double max_linker_length = len_factor*(TempLoop.size());
 			
-			if (ComplexResidues[chain_ID][j].interface_res)
+			if (ComplexResidues[chain_index][j].interface_res)
 				num_res_interface++;
 			// if the loop is large enough, measure the distance end to end
 			if (j - i >= min_res - 1)
@@ -754,15 +760,29 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 
 					// iterate through all the 'interfaces' lists for each residue in TempLoop
 					// and update Interactions if they are not already there
-					for (int loopIter = 0; loopIter < TempLoop.size(); loopIter++)
+					
+
+					// find the number of duplicates of each chain across residues of the loop
+					std::vector<std::string> pair_duplicates;
+					for (std::vector<ResidueData>::iterator loopIter = TempLoop.begin(); loopIter < TempLoop.end(); loopIter++)
 					{
-						for (int resIter = 0; resIter < TempLoop[loopIter].interfaces.size(); resIter++)
+						for (std::vector<std::string>::iterator pairIter = loopIter->interfaces.begin(); pairIter < loopIter->interfaces.end(); pairIter++)
+							pair_duplicates.push_back(*pairIter);
+					}
+
+					// only update Interactions if the number of dupes is at least loop_length*loop_interface_perc
+					for (std::vector<ResidueData>::iterator loopIter = TempLoop.begin(); loopIter < TempLoop.end(); loopIter++)
+					{
+						for (std::vector<std::string>::iterator pairIter = loopIter->interfaces.begin(); pairIter < loopIter->interfaces.end(); pairIter++)
 						{
-							std::string current_chain_pair = TempLoop[loopIter].interfaces[resIter];
-							char chain_1 = current_chain_pair[0];
-							char chain_2 = current_chain_pair[1];
-							if (FindChainPair(Interactions, chain_1, chain_2) == false)
-								Interactions.push_back(current_chain_pair);
+							int count = 0;
+							for (std::vector<std::string>::iterator strIter = pair_duplicates.begin(); strIter < pair_duplicates.end(); strIter++)
+							{
+								if (*strIter == *pairIter)
+									count++;
+							}
+							if (!FindChainPair(Interactions, *pairIter) && count >= ((double)TempLoop.size()*(params.loop_interface_perc)/100))
+									Interactions.push_back(*pairIter);
 						}
 					}
 				}
@@ -772,10 +792,10 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 	}
 }
 
-void ProteinComplex::ExtractLoops(double max_dist, int min_res, int max_res, double min_perc, double len_factor)
+void ProteinComplex::ExtractLoops(ParamData params)
 {
 	for (int i = 0; i < ComplexResidues.size(); i++)
-		LoopFinder(i, max_dist, min_res, max_res, min_perc, len_factor);
+		LoopFinder(i, params);
 }
 
 void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, float bdist)

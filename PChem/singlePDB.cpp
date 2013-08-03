@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include "atomList.h"
 #include "singlePDB.h"
 
 void SinglePDB (bfs::path input, bfs::path output, ParamData params)
@@ -46,7 +45,7 @@ void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 	testComplex.ExtractResidues();
 	testComplex.PrintResidues(file_res);
 	
-	testComplex.ExtractLoops(params.max_dist, params.min_res, params.max_res, params.min_perc, params.len_factor);
+	testComplex.ExtractLoops(params);
 	
 	testComplex.PrintOutput(input, output, params.max_dist);
 }

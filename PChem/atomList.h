@@ -13,6 +13,20 @@ namespace bfs = boost::filesystem;
 
 // this needs to become a class
 // with a copy constructor
+
+struct ParamData
+{
+	double bind_dist;
+
+	int min_res;
+	int max_res;
+	double min_perc;
+	double max_dist;
+	double len_factor;
+	double loop_interface_perc;
+	bool aCarbons_only;
+};
+
 class AtomData
 {
 public:
@@ -48,7 +62,6 @@ struct AtomPairData
 	double distance;
 };
 
-
 struct ResidueData
 {
 	AtomData aCarbon;
@@ -68,7 +81,7 @@ public:
 //  void CleanPDB(bfs::path input, bfs::path output);
 	void CleanPDB2(bfs::path input, bfs::path output);
 
-	bool FindChainPair(std::vector<std::string>& pair_list, char chain1, char chain2);
+	bool FindChainPair(std::vector<std::string>& pair_list, std::string chain_pair);
 //  void LoadPDB(bfs::path filename);
 	bool LoadPDB2(bfs::path filename);
 	void RemoveDuplicates();
@@ -79,8 +92,8 @@ public:
 //	void PrintAtomDist(bfs::path filename, double bind_distance);
 	void ExtractResidues();
 	void PrintResidues(bfs::path filename);
-	void LoopFinder(int chain_ID, double max_dist, int min_res, int max_res, double min_perc, double len_factor);
-	void ExtractLoops(double max_dist, int min_res, int max_res, double min_perc, double len_factor);
+	void LoopFinder(int chain_index, ParamData params);
+	void ExtractLoops(ParamData params);
 	void PrintOutput(bfs::path input_file, bfs::path output, float bdist);
 
 private:
