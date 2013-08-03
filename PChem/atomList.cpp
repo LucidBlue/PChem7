@@ -562,6 +562,7 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 							std::cout << atom2.atom_num << " " << atom2.interfaces.size() << " " << atom2.interfaces[y] << " "; 
 						std::cout << std::endl;
 						*/
+						//
 
 						at1->interface_atom = true;
 						at2->interface_atom = true;
