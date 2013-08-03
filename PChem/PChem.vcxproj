@@ -22,7 +22,7 @@
     <ProjectGuid>{0F359235-7688-4811-81AC-46CAB024D9F8}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>PChem</RootNamespace>
-    <ProjectName>Loopfinder1.3</ProjectName>
+    <ProjectName>Loopfinder1.4.2</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

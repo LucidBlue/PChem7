@@ -34,7 +34,7 @@ AtomData::AtomData()
 	temp_factor = 0;
 	
 	charge = 0;
-	interface_atom = false; 
+	interface_atom = false;
 }
 
 AtomData::AtomData(const AtomData &source)
@@ -55,6 +55,7 @@ AtomData::AtomData(const AtomData &source)
 	
 	charge = source.charge;
 	interface_atom = source.interface_atom;
+	interfaces = source.interfaces;
 }
 
 AtomData& AtomData::operator= (const AtomData &source)
@@ -75,11 +76,13 @@ AtomData& AtomData::operator= (const AtomData &source)
 	
 	charge = source.charge;
 	interface_atom = source.interface_atom;
+	interfaces = source.interfaces;
 	
 	return *this;
 }
 
 // can only run on an un-edited PDB file (requires some specific header lines)
+/*
 void ProteinComplex::FindDuplicates(bfs::path filename)
 {
 	bfs::ifstream infile(filename);
@@ -117,8 +120,59 @@ void ProteinComplex::FindDuplicates(bfs::path filename)
 	}
 	infile.close();
 }
+*/
 
-std::string ProteinComplex::ChangeFilename(bfs::path input_file, std::string append)
+ProteinComplex::ProteinComplex()
+{
+	__num_models__ = 0;
+}
+void ProteinComplex::FindDuplicates2(bfs::path filename)
+{
+	bfs::ifstream infile(filename);
+	std::string current_line;
+	
+	if(!infile.is_open())
+	{
+		std::cout << "File not found\n";
+		return;
+	}
+	
+	for (int chain_iter = 0; !infile.eof(); chain_iter++)
+	{
+ 		std::getline(infile, current_line);
+		if (current_line.find("NUMMDL", 0) == 0)
+		{
+			std::istringstream current_val(current_line.substr(10, 4));
+			current_val >> __num_models__;
+		}
+
+		if (__num_models__ > 1)
+			{
+			if (current_line.find("SOURCE", 0) == 0)
+				break;
+		
+			if (current_line.find("COMPND", 0) == 0)
+			{
+				if (current_line.find("CHAIN", 0) < 12)
+				{
+					std::vector<char> TempDuplicates;
+				
+					for (int iter = current_line.find("CHAIN", 0) + 6; iter < current_line.size(); iter++)
+					{
+						if (std::isalpha(current_line[iter], std::locale()))
+							TempDuplicates.push_back(current_line[iter]);
+					}
+				
+					ChainDuplicates.push_back(TempDuplicates);
+				}
+			
+			}
+		}
+	}
+	infile.close();
+}
+
+std::string ProteinComplex::ChangeFilename(bfs::path input_file, std::string append, std::string extension)
 {
 
 	std::string file_name = input_file.filename().string();
@@ -127,7 +181,7 @@ std::string ProteinComplex::ChangeFilename(bfs::path input_file, std::string app
 	if (file_name.find(".pdb", 0) || file_name.find(".PDB", 0))
 			file_name.erase(file_name.end() - 4, file_name.end());
 	
-	file_name_new = file_name + append + ".pdb";
+	file_name_new = file_name + append + extension;
 
 	return file_name_new;
 }
@@ -197,21 +251,28 @@ void ProteinComplex::CleanPDB2(bfs::path input, bfs::path output)
 
 		if (current_line.find("ATOM", 0) == 0)
 		{
-			bool visited = false;
-
-			for (int a = 0; a < Visited_Chains.size(); a++)
+			if (__num_models__ <= 1)
 			{
-				if (current_line[21] == Visited_Chains[a])
-					visited = true;
-			}
-
-			if (current_chain != current_line[21] && current_chain != '*')
-				Visited_Chains.push_back(current_chain);
-
-			if (visited == false && !IsDuplicate(current_line[21]))
 				outfile << current_line << std::endl;
+			}
+			else
+			{
+				bool visited = false;
 
-			current_chain = current_line[21];
+				for (int a = 0; a < Visited_Chains.size(); a++)
+				{
+					if (current_line[21] == Visited_Chains[a])
+						visited = true;
+				}
+
+				if (current_chain != current_line[21] && current_chain != '*')
+					Visited_Chains.push_back(current_chain);
+
+				if (visited == false && !IsDuplicate(current_line[21]))
+					outfile << current_line << std::endl;
+
+				current_chain = current_line[21];
+			}
 		}
 	}
 
@@ -269,15 +330,38 @@ void ProteinComplex::CleanPDB2(bfs::path input, bfs::path output)
 	infile.close();
 }*/
 
-void ProteinComplex::LoadPDB2(bfs::path filename)
+bool ProteinComplex::FindChainPair(std::vector<std::string>& pair_list, char chain1, char chain2)
+{
+	std::string pair_order_1, pair_order_2;
+	std::stringstream ss;
+	bool found_pair = false;
+
+	ss << chain1 << chain2;
+	ss >> pair_order_1;
+	ss.clear();
+
+	ss << chain2 << chain1;
+	ss >> pair_order_2;
+	ss.clear();
+
+	for (int i = 0; i < pair_list.size(); i++)
+	{
+		if (pair_list[i] == pair_order_1 || pair_list[i] == pair_order_2)
+			found_pair = true;
+	}
+
+	return found_pair;
+}
+
+bool ProteinComplex::LoadPDB2(bfs::path filename)
 {
 	bfs::ifstream infile(filename);
 	std::string current_line;
 
 	if(!infile.is_open())
 	{
-		std::cout << "File not found\n";
-		return;
+		std::cout << "File not found: " << filename.string() <<"\n";
+		return false;
 	}
 	
 	while (!infile.eof())
@@ -347,6 +431,12 @@ void ProteinComplex::LoadPDB2(bfs::path filename)
 			std::getline(infile, current_line);
 	}
 	infile.close();
+
+	if (ComplexAtomData.size() <= 1)
+	{
+		return false;
+	}
+	return true;
 }
 
 // can run only once PDB file is loaded into ComplexAtomData
@@ -391,7 +481,7 @@ void ProteinComplex::InsertAtomData(AtomData atom)
 }
 
 // calculates distances between a pair of AtomData objects and returns value as double
-double ProteinComplex::AtomDistCalc(AtomData atom1, AtomData atom2)
+double ProteinComplex::AtomDistCalc(AtomData& atom1, AtomData& atom2)
 {
 	float x_1, x_2, y_1, y_2, z_1, z_2;
 	x_1 = atom1.x_cd;
@@ -422,7 +512,7 @@ void ProteinComplex::TestCalc()
 	std::cout<< AtomDistCalc(ComplexAtomData[0][14], ComplexAtomData[0][18]) << std::endl;
 }
 
-void ProteinComplex::AllAtomsDistCalc(float bind_distance)
+void ProteinComplex::AllAtomsDistCalc(double bind_distance)
 {
 	for (int i = 0; i < ComplexAtomData.size(); i++)
 	{
@@ -431,17 +521,41 @@ void ProteinComplex::AllAtomsDistCalc(float bind_distance)
 			for (int a = i + 1; a < ComplexAtomData.size(); a++)
 			{
 				for (int b = 0; b < ComplexAtomData[a].size(); b++)
-				{
-					AtomPairData data;
-					
-					data.distance = AtomDistCalc(ComplexAtomData[i][j], ComplexAtomData[a][b]);
-					if (data.distance < bind_distance)
+				{	
+					AtomData atom1 = ComplexAtomData[i][j];
+					AtomData atom2 = ComplexAtomData[a][b];
+					if (AtomDistCalc(atom1, atom2) < bind_distance)
 					{
+						
+						char chain1 = atom1.chain_id;
+						char chain2 = atom2.chain_id;
+						std::stringstream ss;
+						std::string chain_pair;
+						ss << chain1 << chain2;
+						ss >> chain_pair;
+						ss.clear();
+
+						if (FindChainPair(atom1.interfaces, chain1, chain2) == false)
+							atom1.interfaces.push_back(chain_pair);
+
+						if (FindChainPair(atom2.interfaces, chain1, chain2) == false)
+							atom2.interfaces.push_back(chain_pair);
+
+						ComplexAtomData[i][j] = atom1;
+						ComplexAtomData[a][b] = atom2;
+						
+						/*
+						for (int y = 0; y < atom1.interfaces.size(); y++)
+							std::cout << atom1.atom_num << " " << atom1.interfaces.size() << " " << atom1.interfaces[y] << " "; 
+
+						for (int y = 0; y < atom2.interfaces.size(); y++)
+							std::cout << atom2.atom_num << " " << atom2.interfaces.size() << " " << atom2.interfaces[y] << " "; 
+						std::cout << std::endl;
+						*/
+
 						ComplexAtomData[i][j].interface_atom = true;
 						ComplexAtomData[a][b].interface_atom = true;
 					}
-					data.atom1 = ComplexAtomData[i][j];
-					data.atom2 = ComplexAtomData[a][b];
 				}
 			}
 		}
@@ -488,10 +602,23 @@ void ProteinComplex::ExtractResidues()
 		
 		bool interface = false;
 		AtomData current_ACarbon;
-		
+		std::vector<std::string> res_chain_pairs;
+
 		for (int j = 0; j < ComplexAtomData[i].size(); j++)
 		{
 			AtomData current_res = ComplexAtomData[i][j];
+			
+			//populate proxy vector of chain pairs with any pairs not already found
+			for (int a = 0; a < current_res.interfaces.size(); a++)
+			{
+				std::string current_pair = current_res.interfaces[a];
+				char chain1 = current_pair[0];
+				char chain2 = current_pair[1];
+
+				if (FindChainPair(res_chain_pairs, chain1, chain2) == false)
+						res_chain_pairs.push_back(current_pair);
+			}
+
 			
 			if (current_res.residue_num == test_res.residue_num)
 			{
@@ -501,8 +628,17 @@ void ProteinComplex::ExtractResidues()
 				// set the local bool for this residue to true
 				if (current_res.interface_atom == true)
 					interface = true;
+				
+				/*
+				if (current_res.interfaces.size() > 0){
+				for (int z = 0; z < current_res.interfaces.size(); z++)
+					std::cout << current_res.interfaces[z] << " ";
+				std::cout << std::endl;
+				
+				}*/
 			}
-			
+		
+
 			else
 			{
 				// otherwise, we've moved on to the next residue
@@ -510,14 +646,26 @@ void ProteinComplex::ExtractResidues()
 				ResidueData ResData;
 				ResData.aCarbon = current_ACarbon;
 				ResData.interface_res = interface;
+				ResData.interfaces = res_chain_pairs;
+				
+
 				Current_Chain.push_back(ResData);
 				
+				/*
+				if (ResData.interfaces.size() > 0){
+				std::cout << "Res info: " << ResData.interfaces.size() << " ";
+				for (int z = 0; z < ResData.interfaces.size(); z++)
+					std::cout << ResData.interfaces[z] << " ";
+				std::cout << std::endl;
+				}*/
+				// end test stuff
+
 				// reset test res to the new residue;
 				test_res = current_res;
 				interface = false;
 				AtomData blank_atom;
 				current_ACarbon = blank_atom;
-				
+				res_chain_pairs.clear();
 				// and inner loop needs to move back one? (in order to revisit this atom)
 				j--;
 			}
@@ -592,6 +740,20 @@ void ProteinComplex::LoopFinder(int chain_ID, double max_dist, int min_res, int 
 					TempLoop.back().distance_to_start = distance;
 					//std::cout << percent_interface << "% " << distance << std::endl;
 					ComplexLoops.push_back(TempLoop);
+
+					// iterate through all the 'interfaces' lists for each residue in TempLoop
+					// and update Interactions if they are not already there
+					for (int loopIter = 0; loopIter < TempLoop.size(); loopIter++)
+					{
+						for (int resIter = 0; resIter < TempLoop[loopIter].interfaces.size(); resIter++)
+						{
+							std::string current_chain_pair = TempLoop[loopIter].interfaces[resIter];
+							char chain_1 = current_chain_pair[0];
+							char chain_2 = current_chain_pair[1];
+							if (FindChainPair(Interactions, chain_1, chain_2) == false)
+								Interactions.push_back(current_chain_pair);
+						}
+					}
 				}
 			}
 
@@ -605,30 +767,65 @@ void ProteinComplex::ExtractLoops(double max_dist, int min_res, int max_res, dou
 		LoopFinder(i, max_dist, min_res, max_res, min_perc, len_factor);
 }
 
-void ProteinComplex::PrintLoops(bfs::path input_file, bfs::path output)
+void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, float bdist)
 {
-	bfs::path output_file = output;
-	output_file /= "Loops.txt";
+	bfs::path output_file_loop = output;
+	bfs::path output_file_PDB = output;
+	output_file_loop /= "Loops.txt";
+	output_file_PDB /= "cmd_line_input.txt";
 
-	bfs::ofstream outfile(output_file, bfs::ofstream::app);
+	bfs::ofstream outfile_loop(output_file_loop, bfs::ofstream::app);
+	bfs::ofstream outfile_PDB(output_file_PDB, bfs::ofstream::app);
 
-	outfile << input_file.filename().string() << std::endl << std::endl;
-	
+	std::string filename_clean = ChangeFilename(input_file, "_c", ".pdb");
+	std::string output_ddg = ChangeFilename(input_file, "_ddg", "");
+	std::string pdb_code = ChangeFilename(input_file, "", "");
+
+	//print cmd line output to outfile_PDB if loops in ComplexLoops
+	if (ComplexLoops.size() > 0)
+	{
+		std::cout << pdb_code << " ";
+		for (int z = 0; z < Interactions.size(); z++)
+		{
+			std::cout << z << " " << Interactions[z] << std::endl;
+		}
+		for (int i = 0; i < Interactions.size(); i++)
+		{	
+			char first, second;
+			std::stringstream ss;
+
+			ss << Interactions[i][0];
+			ss >> first;
+			ss.clear();
+
+			ss << Interactions[i][1];
+			ss >> second;
+
+			outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
+			<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
+		}
+	}
+
 	for (int i = 0; i < ComplexLoops.size(); i++)
 	{
-		outfile << " linker distance: " << std::left << std::setw(9) << ComplexLoops[i].back().distance_to_start << " ";
+		int loop_length = ComplexLoops[i].back().aCarbon.residue_num - ComplexLoops[i][0].aCarbon.residue_num + 1;
+
+		outfile_loop.precision(5);
+
+		outfile_loop << pdb_code << " " << std::left << std::setw(3) << ComplexLoops[i][0].aCarbon.chain_id
+		<< std::left << std::setw(4) << loop_length
+		<< std::left << std::setw(7) << ComplexLoops[i].back().distance_to_start << " ";
+
 		for (int j = 0; j < ComplexLoops[i].size(); j++)
 		{
 			ResidueData Current_Res = ComplexLoops[i][j];
-			outfile << Current_Res.aCarbon.chain_id << " " 
-			<< Current_Res.aCarbon.residue_num
-			<< " " << Current_Res.aCarbon.residue_type;
-			if (j < (ComplexLoops[i].size() -1))
-				outfile << ", ";
+			outfile_loop << std::left << std::setw(5) << Current_Res.aCarbon.residue_type
+			<< std::left << std::setw(5) << Current_Res.aCarbon.residue_num << "  ";
 		}
 		
-		outfile << std::endl;
+		outfile_loop << std::endl;
 	}
-	outfile << std::endl;
-	outfile.close();
+	outfile_loop << std::endl;
+	outfile_loop.close();
+	outfile_PDB.close();
 }

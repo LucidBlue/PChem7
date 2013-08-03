@@ -29,14 +29,16 @@ public:
 	
 	float occupancy;
 	float temp_factor;
-	
 	int charge;
+
 	bool interface_atom;
+	std::vector<std::string> interfaces;
 	
 	AtomData();
 	AtomData(const AtomData &source);
 	AtomData& operator= (const AtomData &source);
 };
+
 
 struct AtomPairData
 {
@@ -46,36 +48,44 @@ struct AtomPairData
 	double distance;
 };
 
+
 struct ResidueData
 {
 	AtomData aCarbon;
 	bool interface_res;
 	double distance_to_start;
+	std::vector<std::string> interfaces;
 };
 
 class ProteinComplex
 {
 public:
-	void FindDuplicates(bfs::path filename);
+	ProteinComplex();
+//	void FindDuplicates(bfs::path filename);
+	void FindDuplicates2(bfs::path filename);
 	bool IsDuplicate(char chain_ID_test);
-	std::string ChangeFilename(bfs::path input_file, std::string append);
-	void CleanPDB(bfs::path input, bfs::path output);
+	std::string ChangeFilename(bfs::path input_file, std::string append, std::string extension);
+//  void CleanPDB(bfs::path input, bfs::path output);
 	void CleanPDB2(bfs::path input, bfs::path output);
-	void LoadPDB(bfs::path filename);
-	void LoadPDB2(bfs::path filename);
+
+	bool FindChainPair(std::vector<std::string>& pair_list, char chain1, char chain2);
+//  void LoadPDB(bfs::path filename);
+	bool LoadPDB2(bfs::path filename);
 	void RemoveDuplicates();
 	void InsertAtomData(AtomData atom);
-	double AtomDistCalc(AtomData atom1, AtomData atom2);
+	double AtomDistCalc(AtomData& atom1, AtomData& atom2);
 	void TestCalc();
-	void AllAtomsDistCalc(float bind_distance);
-	void PrintAtomDist(bfs::path filename, float bind_distance);
+	void AllAtomsDistCalc(double bind_distance);
+//	void PrintAtomDist(bfs::path filename, double bind_distance);
 	void ExtractResidues();
 	void PrintResidues(bfs::path filename);
 	void LoopFinder(int chain_ID, double max_dist, int min_res, int max_res, double min_perc, double len_factor);
 	void ExtractLoops(double max_dist, int min_res, int max_res, double min_perc, double len_factor);
-	void PrintLoops(bfs::path input_file, bfs::path output);
-	
+	void PrintOutput(bfs::path input_file, bfs::path output, float bdist);
+
 private:
+	int __num_models__;
+	std::vector<std::string> Interactions;
 	std::vector<std::vector<char> > ChainDuplicates;
 	std::vector<std::vector<AtomData> > ComplexAtomData;
 	std::vector<std::vector<ResidueData> > ComplexResidues;
