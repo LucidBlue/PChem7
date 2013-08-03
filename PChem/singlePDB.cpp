@@ -47,5 +47,5 @@ void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 	
 	testComplex.ExtractLoops(params);
 	
-	testComplex.PrintOutput(input, output, params.max_dist);
+	testComplex.PrintOutput(input, output, params);
 }

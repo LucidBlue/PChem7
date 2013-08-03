@@ -70,6 +70,12 @@ struct ResidueData
 	std::vector<std::string> interfaces;
 };
 
+struct LoopData
+{
+	std::vector<ResidueData> LoopResidues;
+	std::vector<std::pair<std::string, double> > Interactions;
+};
+
 class ProteinComplex
 {
 public:
@@ -85,7 +91,7 @@ public:
 //  void LoadPDB(bfs::path filename);
 	bool LoadPDB2(bfs::path filename);
 	void RemoveDuplicates();
-	void InsertAtomData(AtomData atom);
+	void InsertAtomData(AtomData& atom);
 	double AtomDistCalc(AtomData& atom1, AtomData& atom2);
 	void TestCalc();
 	void AllAtomsDistCalc(double bind_distance, bool aCarbons);
@@ -94,13 +100,13 @@ public:
 	void PrintResidues(bfs::path filename);
 	void LoopFinder(int chain_index, ParamData params);
 	void ExtractLoops(ParamData params);
-	void PrintOutput(bfs::path input_file, bfs::path output, float bdist);
+	void PrintOutput(bfs::path input_file, bfs::path output, ParamData params);
 
 private:
 	int __num_models__;
-	std::vector<std::string> Interactions;
+//	std::vector<std::string> Interactions;
 	std::vector<std::vector<char> > ChainDuplicates;
 	std::vector<std::vector<AtomData> > ComplexAtomData;
 	std::vector<std::vector<ResidueData> > ComplexResidues;
-	std::vector<std::vector<ResidueData> > ComplexLoops;
+	std::vector<LoopData> ComplexLoops;
 };
