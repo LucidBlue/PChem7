@@ -541,14 +541,14 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 						if (aCarbons)
 						{
 							if (!FindChainPair(at1->interfaces, chain_pair) && at1->atom_type == "CA")
-									at1->interfaces.push_back(chain_pair);
+								at1->interfaces.push_back(chain_pair);
 
 							if (!FindChainPair(at2->interfaces, chain_pair) && at2->atom_type == "CA")
 								at2->interfaces.push_back(chain_pair);
 						}
 						else{
 							if (!FindChainPair(at1->interfaces, chain_pair))
-									at1->interfaces.push_back(chain_pair);
+								at1->interfaces.push_back(chain_pair);
 
 							if (!FindChainPair(at2->interfaces, chain_pair))
 								at2->interfaces.push_back(chain_pair);
@@ -566,8 +566,20 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 						std::cout << std::endl;
 						*/
 
+						/*
 						at1->interface_atom = true;
 						at2->interface_atom = true;
+						
+						std::cout << at1->atom_num << " " << at1->atom_type << " " << at1->interface_atom << " ";
+						if (at1->interfaces.size() > 0)
+							std::cout << at1->interfaces[0];
+						std::cout << std::endl;
+						std::cout << at2->atom_num << " " << at2->atom_type << " " << at2->interface_atom << " ";
+						if (at2->interfaces.size() > 0)
+							std::cout << at2->interfaces[0];
+						std::cout << std::endl;
+						*/
+						
 					}
 				}
 			}
@@ -608,25 +620,25 @@ void ProteinComplex::PrintAtomDist(bfs::path filename, float bind_distance)
 // inserted with data corresponding to the a-carbon of that residue
 void ProteinComplex::ExtractResidues()
 {
-	for (int i = 0; i < ComplexAtomData.size(); i++)
+	for (std::vector<std::vector<AtomData> >::iterator chainI = ComplexAtomData.begin(); chainI < ComplexAtomData.end(); chainI++)
 	{	
-		std::vector<ResidueData> Current_Chain;
-		AtomData test_res = ComplexAtomData[i][0];
+		std::vector<ResidueData> Current_Segment;
+		AtomData test_res = *chainI->begin();
 		
 		bool interface = false;
 		AtomData current_ACarbon;
 		std::vector<std::string> res_chain_pairs;
 
-		for (int j = 0; j < ComplexAtomData[i].size(); j++)
+		for (std::vector<AtomData>::iterator atomI = chainI->begin(); atomI < chainI->end(); atomI++)
 		{
-			AtomData current_res = ComplexAtomData[i][j];
+			AtomData current_res = *atomI;
 			
-			//populate proxy vector of chain pairs with any pairs not already found
+			//populate proxy vector res_chain_pairs with any pairs not already found
 			for (int a = 0; a < current_res.interfaces.size(); a++)
 			{
 				std::string current_pair = current_res.interfaces[a];
 
-				if (FindChainPair(res_chain_pairs, current_pair) == false)
+				if (!FindChainPair(res_chain_pairs, current_pair))
 						res_chain_pairs.push_back(current_pair);
 			}
 
@@ -634,7 +646,7 @@ void ProteinComplex::ExtractResidues()
 			if (current_res.residue_num == test_res.residue_num)
 			{
 				if (current_res.atom_type == "CA")
-					current_ACarbon = ComplexAtomData[i][j];
+					current_ACarbon = *atomI;
 				// if any of the atoms for this residue are interface atoms
 				// set the local bool for this residue to true
 				if (current_res.interface_atom == true)
@@ -660,7 +672,7 @@ void ProteinComplex::ExtractResidues()
 				ResData.interfaces = res_chain_pairs;
 				
 
-				Current_Chain.push_back(ResData);
+				Current_Segment.push_back(ResData);
 				
 				/*
 				if (ResData.interfaces.size() > 0){
@@ -678,11 +690,10 @@ void ProteinComplex::ExtractResidues()
 				current_ACarbon = blank_atom;
 				res_chain_pairs.clear();
 				// and inner loop needs to move back one? (in order to revisit this atom)
-				j--;
+				atomI--;
 			}
-
 		}
-		ComplexResidues.push_back(Current_Chain);
+		ComplexResidues.push_back(Current_Segment);
 	}
 }
 
