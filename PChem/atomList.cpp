@@ -778,16 +778,20 @@ void ProteinComplex::LoopFinder(int chain_index, ParamData params)
 								if (*strIter == *pairIter)
 									num_res_on_this_interface++;
 							}
-							std::pair<std::string, double> this_interface(*pairIter, 100*((double)num_res_on_this_interface)/((double)TempLoop.size()));
 
-							// messy, but create vector of strings parallel to the strings in this_interface.first
+							double percent_res_on_interface = 100*((double)num_res_on_this_interface)/((double)TempLoop.size());
+							std::pair<std::string, double> this_interface(*pairIter, percent_res_on_interface);
 
+							// messy, but create vector of strings parallel to the strings in this_interface.first, so we can use FindChainPair function
+							std::vector<std::string> loop_interactions;
+							for(int int_iter = 0; int_iter < This_Loop.Interactions.size(); int_iter++)
+								loop_interactions.push_back(This_Loop.Interactions[int_iter].first);
 
+							if (!FindChainPair(loop_interactions, *pairIter))
+								This_Loop.Interactions.push_back(this_interface);
 
-							This_Loop.Interactions.push_back(this_interface);
-
-							//if (!FindChainPair(Interactions, *pairIter) && num_res_on_this_interface >= required_num_on_interface)
-							//		Interactions.push_back(*pairIter);
+							if (!FindChainPair(ComplexInteractions, *pairIter) && percent_res_on_interface >= params.loop_interface_perc)
+								ComplexInteractions.push_back(*pairIter);
 						}
 					}
 					
@@ -823,8 +827,7 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 	std::string pdb_code = ChangeFilename(input_file, "", "");
 
 	//print cmd line output to outfile_PDB if loops in ComplexLoops
-	for (std::vector<LoopData>::iterator loopIter = ComplexLoops.begin(); loopIter < ComplexLoops.end(); loopIter++)
-	{
+
 		/*
 		std::cout << pdb_code << " ";
 		for (int z = 0; z < loopIter->Interactions.size(); z++)
@@ -833,27 +836,22 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 		}
 		*/
 
-		std::vector<std::pair<std::string, double> > loop_interfaces = loopIter->Interactions;
-
-		for (std::vector<std::pair<std::string, double> >::iterator pairIter = loop_interfaces.begin(); pairIter < loop_interfaces.end(); pairIter++)
+		for (std::vector<std::string>::iterator pairIter = ComplexInteractions.begin(); pairIter < ComplexInteractions.end(); pairIter++)
 		{	
-			if(pairIter->second >= params.loop_interface_perc)
-			{
-				char first, second;
-				std::stringstream ss;
+			char first, second;
+			std::stringstream ss;
 
-				ss << pairIter->first[0];
-				ss >> first;
-				ss.clear();
+			ss << (*pairIter)[0];
+			ss >> first;
+			ss.clear();
 
-				ss << pairIter->first[1];
-				ss >> second;
+			ss << (*pairIter)[1];
+			ss >> second;
 
-				outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
-				<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
-			}
+			outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
+			<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
 		}
-	}
+
 
 	for (std::vector<LoopData>::iterator loopIter = ComplexLoops.begin(); loopIter < ComplexLoops.end(); loopIter++)
 	{
@@ -865,6 +863,8 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 		<< std::left << std::setw(4) << loop_length
 		<< std::left << std::setw(7) << loopIter->LoopResidues.back().distance_to_start << " ";
 
+	
+
 		for (std::vector<ResidueData>::iterator resIter = loopIter->LoopResidues.begin(); resIter < loopIter->LoopResidues.end(); resIter++)
 		{
 			ResidueData Current_Res = *resIter;
@@ -872,6 +872,13 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 			<< std::left << std::setw(5) << Current_Res.aCarbon.residue_num << "  ";
 		}
 		
+		outfile_loop << std::endl << "INTERFACES: ";
+		
+		for (std::vector<std::pair<std::string, double> >::iterator pairIter = loopIter->Interactions.begin(); pairIter < loopIter->Interactions.end(); pairIter++)
+		{
+			std::pair<std::string, double> Current_Pair = *pairIter;
+			outfile_loop << std::left << std::setw(4) << pairIter->first << std::left << std::setw(4) << pairIter->second << "  ";
+		}
 		outfile_loop << std::endl;
 	}
 	outfile_loop << std::endl;

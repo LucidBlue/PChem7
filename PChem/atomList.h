@@ -104,7 +104,7 @@ public:
 
 private:
 	int __num_models__;
-//	std::vector<std::string> Interactions;
+	std::vector<std::string> ComplexInteractions;
 	std::vector<std::vector<char> > ChainDuplicates;
 	std::vector<std::vector<AtomData> > ComplexAtomData;
 	std::vector<std::vector<ResidueData> > ComplexResidues;
