@@ -14,6 +14,7 @@ namespace bfs = boost::filesystem;
 // this needs to become a class
 // with a copy constructor
 
+
 struct ParamData
 {
 	double bind_dist;
@@ -75,6 +76,17 @@ struct LoopData
 	std::vector<ResidueData> LoopResidues;
 	std::vector<std::pair<std::string, double> > Interactions;
 };
+
+typedef std::vector<std::string>::iterator chainPairIter;
+
+typedef std::pair<std::string, double> stringDoublePair;
+typedef std::vector<stringDoublePair>::iterator sdpVectorIter;
+
+typedef std::vector<std::vector<AtomData> >::iterator atomComplexIter;
+typedef std::vector<AtomData>::iterator atomVectorIter;
+
+typedef std::vector<std::vector<ResidueData> >::iterator resComplexIter;
+typedef std::vector<ResidueData>::iterator resVectorIter;
 
 class ProteinComplex
 {

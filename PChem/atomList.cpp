@@ -566,10 +566,10 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 						std::cout << std::endl;
 						*/
 
-						/*
+						
 						at1->interface_atom = true;
 						at2->interface_atom = true;
-						
+						/*
 						std::cout << at1->atom_num << " " << at1->atom_type << " " << at1->interface_atom << " ";
 						if (at1->interfaces.size() > 0)
 							std::cout << at1->interfaces[0];
@@ -622,7 +622,7 @@ void ProteinComplex::ExtractResidues()
 {
 	for (std::vector<std::vector<AtomData> >::iterator chainI = ComplexAtomData.begin(); chainI < ComplexAtomData.end(); chainI++)
 	{	
-		std::vector<ResidueData> Current_Segment;
+		std::vector<ResidueData> Current_Chain;
 		AtomData test_res = *chainI->begin();
 		
 		bool interface = false;
@@ -672,7 +672,7 @@ void ProteinComplex::ExtractResidues()
 				ResData.interfaces = res_chain_pairs;
 				
 
-				Current_Segment.push_back(ResData);
+				Current_Chain.push_back(ResData);
 				
 				/*
 				if (ResData.interfaces.size() > 0){
@@ -693,7 +693,7 @@ void ProteinComplex::ExtractResidues()
 				atomI--;
 			}
 		}
-		ComplexResidues.push_back(Current_Segment);
+		ComplexResidues.push_back(Current_Chain);
 	}
 }
 
@@ -721,27 +721,25 @@ void ProteinComplex::LoopFinder(int chain_index, ParamData params)
 	double min_perc = params.min_perc;
 	double len_factor = params.len_factor;
 
-	int chain_size = ComplexResidues[chain_index].size();
-	
 	// visit each residue in the chain
-	for (int i = 0; i < chain_size; i++)
+	for (resVectorIter i = ComplexResidues[chain_index].begin(); i < ComplexResidues[chain_index].end(); i++)
 	{
-		// for each residue, restart the count of total and interface residues
+		// for each loop, restart the count of total and interface residues
 		std::vector<ResidueData> TempLoop;
 		int num_res_interface = 0;
 		int num_res_total = 0;
 		int current_loop_length = 0;
-		int first_res_num = ComplexResidues[chain_index][i].aCarbon.residue_num;
+		int first_res_num = i->aCarbon.residue_num;
 
 		// prev_res_num and current_res_num are counting controls to make sure gaps in the protein chain are accounted for
 		// start counting loops starting at that residue 
 		// and ending at the maximum allowed loop size (or the end of the chain)
-		for (int j = i; (current_loop_length < max_res) && (j < chain_size); j++)
+		for (resVectorIter j = i; (current_loop_length < max_res) && (j < ComplexResidues[chain_index].end()); j++)
 		{
 			double distance;
 			double percent_interface;
 			
-			ResidueData current_res = ComplexResidues[chain_index][j];
+			ResidueData current_res = *j;
 			int current_res_num = current_res.aCarbon.residue_num;
 			current_loop_length = current_res_num - first_res_num + 1;
 
@@ -752,63 +750,62 @@ void ProteinComplex::LoopFinder(int chain_index, ParamData params)
 			// linker length shouldn't be more than about half of the loop length
 			double max_linker_length = len_factor*(TempLoop.size());
 			
-			if (ComplexResidues[chain_index][j].interface_res)
+			if (j->interface_res)
 				num_res_interface++;
-			// if the loop is large enough, measure the distance end to end
-			if (j - i >= min_res - 1)
+
+			// measure the distance end to end
+			distance = AtomDistCalc(TempLoop.front().aCarbon, TempLoop.back().aCarbon);
+			percent_interface = (double(num_res_interface)/double(num_res_total))*100;
+			
+			// if loop is large enough and distance and % interface criteria meet, add to 'loops' vector
+			if ((current_loop_length >= min_res) && (distance <= max_dist) && (distance <= max_linker_length) && (percent_interface >= min_perc))
 			{
-				distance = AtomDistCalc(TempLoop.front().aCarbon, TempLoop.back().aCarbon);
-				percent_interface = (double(num_res_interface)/double(num_res_total))*100;
 				//std::cout << "nrt: " << num_res_total << " nri: " << num_res_interface << " pi: " << percent_interface << std::endl;
-				
+				TempLoop.back().distance_to_start = distance;
 
-				// if distance and % interface criteria meet, add to 'loops' vector
-				if (distance <= max_dist && distance <= max_linker_length && percent_interface >= min_perc)
+				LoopData This_Loop;
+
+				std::vector<std::string> pair_duplicates;
+				std::vector<std::string> loop_interactions;
+				std::vector<std::pair<std::string, double> > loop_interactions_with_perc;
+
+
+				// create list of duplicates, and list excluding duplicates
+				for (resVectorIter loopIter = TempLoop.begin(); loopIter < TempLoop.end(); loopIter++)
 				{
-					TempLoop.back().distance_to_start = distance;
-
-					LoopData This_Loop;
-					This_Loop.LoopResidues = TempLoop;
-
-					// find the number of duplicates of each chain across residues of the loop
-					std::vector<std::string> pair_duplicates;
-					for (std::vector<ResidueData>::iterator loopIter = TempLoop.begin(); loopIter < TempLoop.end(); loopIter++)
+					for (chainPairIter pairIter = loopIter->interfaces.begin(); pairIter < loopIter->interfaces.end(); pairIter++)
 					{
-						for (std::vector<std::string>::iterator pairIter = loopIter->interfaces.begin(); pairIter < loopIter->interfaces.end(); pairIter++)
-							pair_duplicates.push_back(*pairIter);
+						pair_duplicates.push_back(*pairIter);
+
+						if (!FindChainPair(loop_interactions, *pairIter))
+							loop_interactions.push_back(*pairIter);
 					}
-
-					// only update Interactions if the number of dupes is at least loop_length*loop_interface_perc
-					for (std::vector<ResidueData>::iterator loopIter = TempLoop.begin(); loopIter < TempLoop.end(); loopIter++)
-					{
-						for (std::vector<std::string>::iterator pairIter = loopIter->interfaces.begin(); pairIter < loopIter->interfaces.end(); pairIter++)
-						{
-							int num_res_on_this_interface = 0;
-							for (std::vector<std::string>::iterator strIter = pair_duplicates.begin(); strIter < pair_duplicates.end(); strIter++)
-							{
-								if (*strIter == *pairIter)
-									num_res_on_this_interface++;
-							}
-
-							double percent_res_on_interface = 100*((double)num_res_on_this_interface)/((double)TempLoop.size());
-							std::pair<std::string, double> this_interface(*pairIter, percent_res_on_interface);
-
-							// messy, but create vector of strings parallel to the strings in this_interface.first, so we can use FindChainPair function
-							std::vector<std::string> loop_interactions;
-							for(int int_iter = 0; int_iter < This_Loop.Interactions.size(); int_iter++)
-								loop_interactions.push_back(This_Loop.Interactions[int_iter].first);
-
-							if (!FindChainPair(loop_interactions, *pairIter))
-								This_Loop.Interactions.push_back(this_interface);
-
-							if (!FindChainPair(ComplexInteractions, *pairIter) && percent_res_on_interface >= params.loop_interface_perc)
-								ComplexInteractions.push_back(*pairIter);
-						}
-					}
-					
-					//std::cout << percent_interface << "% " << distance << std::endl;
-					ComplexLoops.push_back(This_Loop);
 				}
+
+				// iterate through loop_interactions
+				// only update This_Loop.Interactions if the number of dupes is at least loop_length*loop_interface_perc
+				for (chainPairIter pairIter = loop_interactions.begin(); pairIter < loop_interactions.end(); pairIter++)
+				{
+					int num_res_on_this_interface = 0;
+					for (chainPairIter dupeIter = pair_duplicates.begin(); dupeIter < pair_duplicates.end(); dupeIter++)
+					{
+						if (*dupeIter == *pairIter)
+							num_res_on_this_interface++;
+					}
+
+					double percent_res_on_interface = 100*((double)num_res_on_this_interface)/((double)TempLoop.size());
+					std::pair<std::string, double> this_interface(*pairIter, percent_res_on_interface);
+
+					loop_interactions_with_perc.push_back(this_interface);
+
+					if (!FindChainPair(ComplexInteractions, *pairIter) && percent_res_on_interface >= params.loop_interface_perc)
+						ComplexInteractions.push_back(*pairIter);
+				}
+					
+				//std::cout << percent_interface << "% " << distance << std::endl;
+				This_Loop.LoopResidues = TempLoop;
+				This_Loop.Interactions = loop_interactions_with_perc;
+				ComplexLoops.push_back(This_Loop);
 			}
 
 		}
@@ -823,7 +820,7 @@ void ProteinComplex::ExtractLoops(ParamData params)
 
 void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamData params)
 {
-	double bdist = params.max_dist;
+	double bdist = params.bind_dist;
 
 	bfs::path output_file_loop = output;
 	bfs::path output_file_PDB = output;
@@ -837,33 +834,24 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 	std::string output_ddg = ChangeFilename(input_file, "_ddg", "");
 	std::string pdb_code = ChangeFilename(input_file, "", "");
 
-	//print cmd line output to outfile_PDB if loops in ComplexLoops
+	// print all lines to cmd_line_input
+	for (std::vector<std::string>::iterator pairIter = ComplexInteractions.begin(); pairIter < ComplexInteractions.end(); pairIter++)
+	{	
+		char first, second;
+		std::stringstream ss;
 
-		/*
-		std::cout << pdb_code << " ";
-		for (int z = 0; z < loopIter->Interactions.size(); z++)
-		{
-			std::cout << z << " " << loopIter->Interactions[z].first << std::endl;
-		}
-		*/
+		ss << (*pairIter)[0];
+		ss >> first;
+		ss.clear();
 
-		for (std::vector<std::string>::iterator pairIter = ComplexInteractions.begin(); pairIter < ComplexInteractions.end(); pairIter++)
-		{	
-			char first, second;
-			std::stringstream ss;
+		ss << (*pairIter)[1];
+		ss >> second;
 
-			ss << (*pairIter)[0];
-			ss >> first;
-			ss.clear();
+		outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
+		<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
+	}
 
-			ss << (*pairIter)[1];
-			ss >> second;
-
-			outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
-			<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
-		}
-
-
+	// print all lines to loops
 	for (std::vector<LoopData>::iterator loopIter = ComplexLoops.begin(); loopIter < ComplexLoops.end(); loopIter++)
 	{
 		int loop_length = loopIter->LoopResidues.back().aCarbon.residue_num - loopIter->LoopResidues.front().aCarbon.residue_num + 1;
@@ -874,9 +862,7 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 		<< std::left << std::setw(4) << loop_length
 		<< std::left << std::setw(7) << loopIter->LoopResidues.back().distance_to_start << " ";
 
-	
-
-		for (std::vector<ResidueData>::iterator resIter = loopIter->LoopResidues.begin(); resIter < loopIter->LoopResidues.end(); resIter++)
+		for (resVectorIter resIter = loopIter->LoopResidues.begin(); resIter < loopIter->LoopResidues.end(); resIter++)
 		{
 			ResidueData Current_Res = *resIter;
 			outfile_loop << std::left << std::setw(5) << Current_Res.aCarbon.residue_type
@@ -885,10 +871,10 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 		
 		outfile_loop << std::endl << "INTERFACES: ";
 		
-		for (std::vector<std::pair<std::string, double> >::iterator pairIter = loopIter->Interactions.begin(); pairIter < loopIter->Interactions.end(); pairIter++)
+		for (sdpVectorIter pairIter = loopIter->Interactions.begin(); pairIter < loopIter->Interactions.end(); pairIter++)
 		{
 			std::pair<std::string, double> Current_Pair = *pairIter;
-			outfile_loop << std::left << std::setw(4) << pairIter->first << std::left << std::setw(4) << pairIter->second << "  ";
+			outfile_loop << std::left << std::setw(5) << pairIter->first << std::left << std::setw(5) << pairIter->second << "  ";
 		}
 		outfile_loop << std::endl;
 	}

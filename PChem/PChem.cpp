@@ -59,11 +59,7 @@ int main(int argc, char* const argv[])
 			input_iter != bfs::directory_iterator(); input_iter++)
 		{
 			if (bfs::is_regular_file(*input_iter))
-			{
-				// test stuff:
-				std::cout << input_iter->path().string() << std::endl;
 				SinglePDB(input_iter->path(), output, params);
-			}
 		}
 	}
 	else
