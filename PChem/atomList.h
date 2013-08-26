@@ -25,6 +25,7 @@ struct ParamData
 	double max_dist;
 	double len_factor;
 	double loop_interface_perc;
+	int num_partners;
 	bool aCarbons_only;
 };
 
@@ -93,7 +94,7 @@ class ProteinComplex
 public:
 	ProteinComplex();
 //	void FindDuplicates(bfs::path filename);
-	void FindDuplicates2(bfs::path filename);
+	void FindDuplicates2(bfs::path filename, ParamData params);
 	bool IsDuplicate(char chain_ID_test);
 	std::string ChangeFilename(bfs::path input_file, std::string append, std::string extension);
 //  void CleanPDB(bfs::path input, bfs::path output);

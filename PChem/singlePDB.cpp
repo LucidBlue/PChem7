@@ -28,7 +28,7 @@ void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 	bfs::path file_res = output;
 	file_res /= filename_res;
 
-	testComplex.FindDuplicates2(input);
+	testComplex.FindDuplicates2(input, params);
 
 	//testComplex.CleanPDB(input, file_clean);
 	testComplex.CleanPDB2(input, file_clean);
@@ -37,7 +37,7 @@ void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 	if (testComplex.LoadPDB2(file_clean) == false)
 		return;
 
-	testComplex.RemoveDuplicates();
+	//testComplex.RemoveDuplicates();
 	
 	testComplex.AllAtomsDistCalc(params.bind_dist, params.aCarbons_only);		 
 	//testComplex.PrintAtomDist(file_dist, params.bind_dist);

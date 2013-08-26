@@ -127,7 +127,7 @@ ProteinComplex::ProteinComplex()
 {
 	__num_models__ = 0;
 }
-void ProteinComplex::FindDuplicates2(bfs::path filename)
+void ProteinComplex::FindDuplicates2(bfs::path filename, ParamData params)
 {
 	bfs::ifstream infile(filename);
 	std::string current_line;
@@ -147,29 +147,52 @@ void ProteinComplex::FindDuplicates2(bfs::path filename)
 			current_val >> __num_models__;
 		}
 
-		if (__num_models__ > 1)
-			{
-			if (current_line.find("SOURCE", 0) == 0)
-				break;
+		if (current_line.find("SOURCE", 0) == 0)
+			break;
 		
-			if (current_line.find("COMPND", 0) == 0)
+		if (current_line.find("COMPND", 0) == 0)
+		{
+			if (current_line.find("CHAIN", 0) < 12)
 			{
-				if (current_line.find("CHAIN", 0) < 12)
+				std::vector<char> TempDuplicates;
+				
+				for (int iter = current_line.find("CHAIN", 0) + 6; iter < current_line.size(); iter++)
 				{
-					std::vector<char> TempDuplicates;
-				
-					for (int iter = current_line.find("CHAIN", 0) + 6; iter < current_line.size(); iter++)
-					{
-						if (std::isalpha(current_line[iter], std::locale()))
-							TempDuplicates.push_back(current_line[iter]);
-					}
-				
-					ChainDuplicates.push_back(TempDuplicates);
+					if (std::isalpha(current_line[iter], std::locale()))
+						TempDuplicates.push_back(current_line[iter]);
 				}
+				
+				ChainDuplicates.push_back(TempDuplicates);
 			}
 		}
 	}
 	infile.close();
+
+	// make sure ChainDuplicates has enough chars
+
+	// remove num_partners worth of chars from ChainDuplcates
+	std::vector<std::vector<char> >::iterator vecIter = ChainDuplicates.begin();
+	int nchains = 0;
+	while(nchains < params.num_partners && !ChainDuplicates.empty())
+	{
+		if(vecIter == ChainDuplicates.end())
+			vecIter = ChainDuplicates.begin();
+		if(vecIter->empty())
+			vecIter = ChainDuplicates.erase(vecIter);
+		else
+		{
+			vecIter->erase(vecIter->begin());
+			nchains++;
+			vecIter++;
+		}
+	}
+	/*
+	if(vecIter == ChainDuplicates.end())
+			vecIter = ChainDuplicates.begin();
+	if(vecIter->empty())
+		vecIter = ChainDuplicates.erase(vecIter);
+		*/
+
 }
 
 std::string ProteinComplex::ChangeFilename(bfs::path input_file, std::string append, std::string extension)
@@ -216,7 +239,7 @@ bool ProteinComplex::IsDuplicate(char chain_ID_test)
 
 	for (int i = 0; i < ChainDuplicates.size(); i++)
 	{
-		for (int j = 1; j < ChainDuplicates[i].size(); j++)
+		for (int j = 0; j < ChainDuplicates[i].size(); j++)
 		{
 			if (chain_ID_test == ChainDuplicates[i][j])
 			{
@@ -251,28 +274,21 @@ void ProteinComplex::CleanPDB2(bfs::path input, bfs::path output)
 
 		if (current_line.find("ATOM", 0) == 0)
 		{
-			if (__num_models__ <= 1)
+			bool visited = false;
+
+			for (int a = 0; a < Visited_Chains.size(); a++)
 			{
+				if (current_line[21] == Visited_Chains[a])
+					visited = true;
+			}
+
+			if (current_chain != current_line[21] && current_chain != '*')
+				Visited_Chains.push_back(current_chain);
+
+			if (visited == false && !IsDuplicate(current_line[21]))
 				outfile << current_line << std::endl;
-			}
-			else
-			{
-				bool visited = false;
 
-				for (int a = 0; a < Visited_Chains.size(); a++)
-				{
-					if (current_line[21] == Visited_Chains[a])
-						visited = true;
-				}
-
-				if (current_chain != current_line[21] && current_chain != '*')
-					Visited_Chains.push_back(current_chain);
-
-				if (visited == false && !IsDuplicate(current_line[21]))
-					outfile << current_line << std::endl;
-
-				current_chain = current_line[21];
-			}
+			current_chain = current_line[21];
 		}
 	}
 

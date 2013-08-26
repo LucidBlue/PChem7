@@ -20,6 +20,7 @@ int main(int argc, char* const argv[])
 	params.len_factor = 1.75;
 	params.aCarbons_only = false;
 	params.loop_interface_perc = 0.5;
+	params.num_partners = 2;
 
 	bfs::path input;
 
@@ -41,6 +42,8 @@ int main(int argc, char* const argv[])
 			params.len_factor = atof(argv[++i]);
 		else if (string(argv[i]) == "-liperc")
 			params.loop_interface_perc = atof(argv[++i]);
+		else if (string(argv[i]) == "-nchain")
+			params.num_partners = atoi(argv[++i]);
 		else if (string(argv[i]) == "-acarbs")
 		{
 			params.aCarbons_only = true;
