@@ -6,28 +6,13 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/fstream.hpp"
 namespace bfs = boost::filesystem;
 
-// this needs to become a class
-// with a copy constructor
-
-
-struct ParamData
-{
-	double bind_dist;
-
-	int min_res;
-	int max_res;
-	double min_perc;
-	double max_dist;
-	double len_factor;
-	double loop_interface_perc;
-	int num_partners;
-	bool aCarbons_only;
-};
+#include "structures.h"
 
 class AtomData
 {
@@ -92,23 +77,13 @@ typedef std::vector<ResidueData>::iterator resVectorIter;
 class ProteinComplex
 {
 public:
-	ProteinComplex();
-//	void FindDuplicates(bfs::path filename);
-	void FindDuplicates2(bfs::path filename, ParamData params);
-	bool IsDuplicate(char chain_ID_test);
-	std::string ChangeFilename(bfs::path input_file, std::string append, std::string extension);
-//  void CleanPDB(bfs::path input, bfs::path output);
-	void CleanPDB2(bfs::path input, bfs::path output);
-
 	bool FindChainPair(std::vector<std::string>& pair_list, std::string chain_pair);
 //  void LoadPDB(bfs::path filename);
 	bool LoadPDB2(bfs::path filename);
-	void RemoveDuplicates();
 	void InsertAtomData(AtomData& atom);
 	double AtomDistCalc(AtomData& atom1, AtomData& atom2);
 	void TestCalc();
 	void AllAtomsDistCalc(double bind_distance, bool aCarbons);
-//	void PrintAtomDist(bfs::path filename, double bind_distance);
 	void ExtractResidues();
 	void PrintResidues(bfs::path filename);
 	void LoopFinder(int chain_index, ParamData params);
@@ -118,8 +93,8 @@ public:
 private:
 	int __num_models__;
 	std::vector<std::string> ComplexInteractions;
-	std::vector<std::vector<char> > ChainDuplicates;
 	std::vector<std::vector<AtomData> > ComplexAtomData;
 	std::vector<std::vector<ResidueData> > ComplexResidues;
 	std::vector<LoopData> ComplexLoops;
+	std::unordered_map<char,int> NumInterfaceRes;
 };

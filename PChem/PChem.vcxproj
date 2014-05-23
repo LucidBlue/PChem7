@@ -22,7 +22,7 @@
     <ProjectGuid>{0F359235-7688-4811-81AC-46CAB024D9F8}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>PChem</RootNamespace>
-    <ProjectName>Loopfinder1.6.0</ProjectName>
+    <ProjectName>Loopfinder1.7.0</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -157,14 +157,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="atomList.h" />
+    <ClInclude Include="cleaning.h" />
     <ClInclude Include="singlePDB.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="structures.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="atomList.cpp" />
+    <ClCompile Include="cleaning.cpp" />
     <ClCompile Include="singlePDB.cpp" />
     <ClCompile Include="PChem.cpp" />
     <ClCompile Include="stdafx.cpp">

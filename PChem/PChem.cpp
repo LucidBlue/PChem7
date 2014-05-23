@@ -1,9 +1,11 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/fstream.hpp"
 
 #include "singlePDB.h"
+#include "cleaning.h"
 
 namespace bfs = boost::filesystem;
 using namespace std;
@@ -62,6 +64,23 @@ int main(int argc, char* const argv[])
 			input_iter != bfs::directory_iterator(); input_iter++)
 		{
 			if (bfs::is_regular_file(*input_iter))
+			{
+				bfs::path output_path_strip(output);
+				output_path_strip /= input_iter->path().leaf().string();
+
+				std::vector<vector<char> > ChainDuplicates = FindDuplicates(input_iter->path());
+				std::vector<char> GoodChains = RemoveDuplicates(params, ChainDuplicates);
+
+				CleanPDB(input_iter->path(), output_path_strip, GoodChains);
+				SplitPDB(output_path_strip, GoodChains);
+			}
+		}
+		
+
+		for (bfs::directory_iterator input_iter (output); 
+			input_iter != bfs::directory_iterator(); input_iter++)
+		{
+			if (bfs::is_regular_file(*input_iter) && (input_iter->path().leaf().string()).find("_c.pdb") == 7)
 				SinglePDB(input_iter->path(), output, params);
 		}
 	}

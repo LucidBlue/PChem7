@@ -16,6 +16,7 @@
 #include <cmath>
 #include <locale>
 
+#include "cleaning.h"
 // may need to change the defaults if this runs into errors
 
 AtomData::AtomData()
@@ -81,270 +82,6 @@ AtomData& AtomData::operator= (const AtomData &source)
 	
 	return *this;
 }
-
-// can only run on an un-edited PDB file (requires some specific header lines)
-/*
-void ProteinComplex::FindDuplicates(bfs::path filename)
-{
-	bfs::ifstream infile(filename);
-	std::string current_line;
-	
-	if(!infile.is_open())
-	{
-		std::cout << "File not found\n";
-		return;
-	}
-	
-	for (int chain_iter = 0; !infile.eof(); chain_iter++)
-	{
- 		std::getline(infile, current_line);
-		
-		if (current_line.find("SOURCE", 0) == 0)
-			break;
-		
-		if (current_line.find("COMPND", 0) == 0)
-		{
-			if (current_line.find("CHAIN", 0) < 12)
-			{
-				std::vector<char> TempDuplicates;
-				
-				for (int iter = current_line.find("CHAIN", 0) + 6; iter < current_line.size(); iter++)
-				{
-					if (std::isalpha(current_line[iter], std::locale()))
-						TempDuplicates.push_back(current_line[iter]);
-				}
-				
-				ChainDuplicates.push_back(TempDuplicates);
-			}
-			
-		}
-	}
-	infile.close();
-}
-*/
-
-ProteinComplex::ProteinComplex()
-{
-	__num_models__ = 0;
-}
-void ProteinComplex::FindDuplicates2(bfs::path filename, ParamData params)
-{
-	bfs::ifstream infile(filename);
-	std::string current_line;
-	
-	if(!infile.is_open())
-	{
-		std::cout << "File not found\n";
-		return;
-	}
-	
-	for (int chain_iter = 0; !infile.eof(); chain_iter++)
-	{
- 		std::getline(infile, current_line);
-		if (current_line.find("NUMMDL", 0) == 0)
-		{
-			std::istringstream current_val(current_line.substr(10, 4));
-			current_val >> __num_models__;
-		}
-
-		if (current_line.find("SOURCE", 0) == 0)
-			break;
-		
-		if (current_line.find("COMPND", 0) == 0)
-		{
-			if (current_line.find("CHAIN", 0) < 12)
-			{
-				std::vector<char> TempDuplicates;
-				
-				for (int iter = current_line.find("CHAIN", 0) + 6; iter < current_line.size(); iter++)
-				{
-					if (std::isalpha(current_line[iter], std::locale()))
-						TempDuplicates.push_back(current_line[iter]);
-				}
-				
-				ChainDuplicates.push_back(TempDuplicates);
-			}
-		}
-	}
-	infile.close();
-
-	// make sure ChainDuplicates has enough chars
-
-	// remove num_partners worth of chars from ChainDuplcates
-	std::vector<std::vector<char> >::iterator vecIter = ChainDuplicates.begin();
-	int nchains = 0;
-	while(nchains < params.num_partners && !ChainDuplicates.empty())
-	{
-		if(vecIter == ChainDuplicates.end())
-			vecIter = ChainDuplicates.begin();
-		if(vecIter->empty())
-			vecIter = ChainDuplicates.erase(vecIter);
-		else
-		{
-			vecIter->erase(vecIter->begin());
-			nchains++;
-			vecIter++;
-		}
-	}
-	/*
-	if(vecIter == ChainDuplicates.end())
-			vecIter = ChainDuplicates.begin();
-	if(vecIter->empty())
-		vecIter = ChainDuplicates.erase(vecIter);
-		*/
-
-}
-
-std::string ProteinComplex::ChangeFilename(bfs::path input_file, std::string append, std::string extension)
-{
-
-	std::string file_name = input_file.filename().string();
-	std::string file_name_new;
-
-	if (file_name.find(".pdb", 0) || file_name.find(".PDB", 0))
-			file_name.erase(file_name.end() - 4, file_name.end());
-	
-	file_name_new = file_name + append + extension;
-
-	return file_name_new;
-}
-/*
-void ProteinComplex::CleanPDB(bfs::path input, bfs::path output)
-{
-	bfs::ifstream infile(input);
-	bfs::ofstream outfile(output);
-	
-	if(!infile.is_open())
-	{
-		std::cout << "File not found\n";
-		return;
-	}
-	
-	for (int i = 0; !infile.eof(); i++)
-	{
-		std::string current_line;
-		std::getline(infile, current_line);
-	
-		if (current_line.find("ATOM", 0) == 0)
-			outfile << current_line << std::endl;
-	}
-	
-	infile.close();
-	outfile.close();
-}
-*/
-bool ProteinComplex::IsDuplicate(char chain_ID_test)
-{
-	bool found = false;
-
-	for (int i = 0; i < ChainDuplicates.size(); i++)
-	{
-		for (int j = 0; j < ChainDuplicates[i].size(); j++)
-		{
-			if (chain_ID_test == ChainDuplicates[i][j])
-			{
-				found = true;
-			}
-		}
-	}
-	return found;
-}
-
-void ProteinComplex::CleanPDB2(bfs::path input, bfs::path output)
-{
-	bfs::ifstream infile(input);
-	bfs::ofstream outfile(output);
-	
-	std::vector<char> Visited_Chains;
-	
-
-	if(!infile.is_open())
-	{
-		std::cout << "File not found\n";
-		return;
-	}
-
-	char current_chain = '*';
-
-	for (int i = 0; !infile.eof(); i++)
-	{
-		std::string current_line;
-		std::getline(infile, current_line);
-		
-
-		if (current_line.find("ATOM", 0) == 0)
-		{
-			bool visited = false;
-
-			for (int a = 0; a < Visited_Chains.size(); a++)
-			{
-				if (current_line[21] == Visited_Chains[a])
-					visited = true;
-			}
-
-			if (current_chain != current_line[21] && current_chain != '*')
-				Visited_Chains.push_back(current_chain);
-
-			if (visited == false && !IsDuplicate(current_line[21]))
-				outfile << current_line << std::endl;
-
-			current_chain = current_line[21];
-		}
-	}
-
-	infile.close();
-	outfile.close();
-}
-
-// as of now, loads all atom data from a cleaned PDB file
-// will deal with how to add built-in cleaning method to this function
-/*void ProteinComplex::LoadPDB(bfs::path filename)
-{
-	bfs::ifstream infile(filename);
-	std::string carry_over;
-
-	if(!infile.is_open())
-	{
-		std::cout << "File not found\n";
-		return;
-	}
-	
-	while (!infile.eof())
-	{
-		infile >> carry_over;
-		if (!infile.eof())
-		{
-			if(carry_over == "ATOM")
-				break;
-		}
-	}
-	
-	while (!infile.eof()) 
-	{	
-		if (carry_over == "ATOM")
-		{
-			AtomData current_atom;
-			infile >> current_atom.atom_num;
-			infile >> current_atom.atom_type;
-			infile >> current_atom.residue_type;
-			infile >> current_atom.chain_id;
-			infile >> current_atom.residue_num;
-			infile >> current_atom.x_cd;
-			infile >> current_atom.y_cd;
-			infile >> current_atom.z_cd;
-			infile >> current_atom.occupancy;
-			infile >> current_atom.temp_factor;
-			infile >> current_atom.atom_element;
-		
-			InsertAtomData(current_atom);
-			infile >> carry_over;
-		}
-		else
-			infile >> carry_over;
-	}
-	
-	infile.close();
-}*/
 
 bool ProteinComplex::FindChainPair(std::vector<std::string>& pair_list, std::string chain_pair)
 {
@@ -458,25 +195,6 @@ bool ProteinComplex::LoadPDB2(bfs::path filename)
 	return true;
 }
 
-// can run only once PDB file is loaded into ComplexAtomData
-void ProteinComplex::RemoveDuplicates()
-{	
-	for (int i = 0; i < ChainDuplicates.size(); i++)
-	{
-		for (int j = 1; j < ChainDuplicates[i].size(); j++)
-		{
-			std::vector<std::vector<AtomData> >::iterator atom_iter = ComplexAtomData.begin();
-			while (atom_iter < ComplexAtomData.end())
-			{
-				if ((*atom_iter)[0].chain_id == ChainDuplicates[i][j])
-					atom_iter = ComplexAtomData.erase(atom_iter);
-				else
-					atom_iter++;
-			}
-		}
-	}
-}
-
 void ProteinComplex::InsertAtomData(AtomData& atom)
 {
 	char current_chain = ' ';
@@ -533,6 +251,7 @@ void ProteinComplex::TestCalc()
 
 void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 {
+
 	for (std::vector<std::vector<AtomData> >::iterator ch1 = ComplexAtomData.begin(); ch1 < ComplexAtomData.end(); ch1++)
 	{
 		for (std::vector<AtomData>::iterator at1 = ch1->begin(); at1 < ch1->end(); at1++)
@@ -546,6 +265,7 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 					if (AtomDistCalc(*at1, *at2) < bind_distance)
 					{
 						
+
 						char chain1 = at1->chain_id;
 						char chain2 = at2->chain_id;
 						std::stringstream ss;
@@ -553,6 +273,7 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 						ss << chain1 << chain2;
 						ss >> chain_pair;
 						ss.clear();
+						
 
 						if (aCarbons)
 						{
@@ -582,7 +303,14 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 						std::cout << std::endl;
 						*/
 
-						
+						// we have found an interface residue so increment sum for the two chains
+						// but only if they are not already marked (and thus have already been counted toward sum)
+						if (!at1->interface_atom)
+							NumInterfaceRes[chain1]++;
+						if (!at2->interface_atom)
+							NumInterfaceRes[chain2]++;
+
+						// and set interface_atom to true, regardless
 						at1->interface_atom = true;
 						at2->interface_atom = true;
 						/*
@@ -602,35 +330,6 @@ void ProteinComplex::AllAtomsDistCalc(double bind_distance, bool aCarbons)
 		}
 	}
 }
-
-// prints out all atom pair distance data into a file
-// output formatting needs some work
-
-/*
-void ProteinComplex::PrintAtomDist(bfs::path filename, float bind_distance)
-{
-	bfs::ofstream outfile(filename);
-	
-	for (int i = 0; i < ComplexDist.size(); i++)
-	{
-		// redundant test to be sure both atoms being printed are actually interface
-		if (ComplexDist[i].distance < bind_distance)
-		{
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom1.atom_num;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom1.atom_type;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom1.chain_id;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom1.residue_num;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom1.interface_atom;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom2.atom_num;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom2.atom_type;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom2.chain_id;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom2.residue_num;
-			outfile << std::left << std::setw(10) << ComplexDist[i].atom2.interface_atom;
-			outfile << ComplexDist[i].distance << std::endl;
-		}
-	}
-}
-*/
 
 // extracts all the residues and marks them as interface or not
 // inserted with data corresponding to the a-carbon of that residue
@@ -846,7 +545,6 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 	bfs::ofstream outfile_loop(output_file_loop, bfs::ofstream::app);
 	bfs::ofstream outfile_PDB(output_file_PDB, bfs::ofstream::app);
 
-	std::string filename_clean = ChangeFilename(input_file, "_c", ".pdb");
 	std::string output_ddg = ChangeFilename(input_file, "_ddg", "");
 	std::string pdb_code = ChangeFilename(input_file, "", "");
 
@@ -863,6 +561,15 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 		ss << (*pairIter)[1];
 		ss >> second;
 
+		std::stringstream ssfilext;
+
+		ssfilext << "_" << first << second << "_c";
+		std::string filext;
+		ssfilext >> filext;
+		
+
+		std::string filename_clean = ChangeFilename(input_file, filext, ".pdb");
+
 		outfile_PDB << " --pdb_filename=" << filename_clean << " --partners=" << first << "_" << second
 		<< " --interface_cutoff=" << bdist << " --trials=" << 20 << " --trial_output="<< output_ddg << std::endl;
 	}
@@ -870,13 +577,14 @@ void ProteinComplex::PrintOutput(bfs::path input_file, bfs::path output, ParamDa
 	// print all lines to loops
 	for (std::vector<LoopData>::iterator loopIter = ComplexLoops.begin(); loopIter < ComplexLoops.end(); loopIter++)
 	{
+		
 		int loop_length = loopIter->LoopResidues.back().aCarbon.residue_num - loopIter->LoopResidues.front().aCarbon.residue_num + 1;
 
 		outfile_loop.precision(5);
 
 		outfile_loop << pdb_code << " " << std::left << std::setw(3) << loopIter->LoopResidues.front().aCarbon.chain_id
 		<< std::left << std::setw(4) << loop_length
-		<< std::left << std::setw(7) << loopIter->LoopResidues.back().distance_to_start << " ";
+		<< std::left << std::setw(7) << loopIter->LoopResidues.back().distance_to_start << " " << "num res: " << NumInterfaceRes[loopIter->LoopResidues.front().aCarbon.chain_id] << " ";
 
 		for (resVectorIter resIter = loopIter->LoopResidues.begin(); resIter < loopIter->LoopResidues.end(); resIter++)
 		{

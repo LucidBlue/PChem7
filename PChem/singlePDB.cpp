@@ -1,46 +1,24 @@
 #include <iostream>
 #include <fstream>
 #include "singlePDB.h"
+#include "atomlist.h"
 
 void SinglePDB (bfs::path input, bfs::path output, ParamData params)
 {
-//std::cout << params.max_dist
-//	<< " " << params.min_res
-//	<< " " << params.max_res
-//	<< " " << params.min_perc
-//	<< std::endl;
-
 	ProteinComplex testComplex;
 
-	// make this function (and maybe others) part of a separate header and namespace
-	// include this namespace so the functions can be called easily
-
-	std::string filename_clean = testComplex.ChangeFilename(input, "_c", ".pdb");
-	std::string filename_dist = testComplex.ChangeFilename(input, "_dist", ".pdb");
-	std::string filename_res = testComplex.ChangeFilename(input, "_res", ".pdb");
-
-	bfs::path file_clean = output;
-	file_clean /= filename_clean;
-
-	bfs::path file_dist = output;
-	file_dist /= filename_dist;
+	std::string pdb_and_partners = input.leaf().string().substr(0,7);
+	std::string filename_res = pdb_and_partners + "_res.txt";
+	
+	bfs::path file_clean = input;
 
 	bfs::path file_res = output;
 	file_res /= filename_res;
 
-	testComplex.FindDuplicates2(input, params);
-
-	//testComplex.CleanPDB(input, file_clean);
-	testComplex.CleanPDB2(input, file_clean);
-
-	//testComplex.LoadPDB(file_clean);
 	if (testComplex.LoadPDB2(file_clean) == false)
 		return;
 
-	//testComplex.RemoveDuplicates();
-	
-	testComplex.AllAtomsDistCalc(params.bind_dist, params.aCarbons_only);		 
-	//testComplex.PrintAtomDist(file_dist, params.bind_dist);
+	testComplex.AllAtomsDistCalc(params.bind_dist, params.aCarbons_only);
 	
 	testComplex.ExtractResidues();
 	testComplex.PrintResidues(file_res);
